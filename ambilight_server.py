@@ -261,17 +261,8 @@ def chosen_action():
 
     chosen_action = request.form['action']
     print("Chosen Action: "+chosen_action)
-
     availibleActions()[chosen_action]()
 
-    if chosen_action == 'Watch Apple TV w/Ambilight':
-        # do automation function here
-        print('TODO: make Automation function here')
-        tv_power_on()
-        hdmi_1()
-        startBackgroundAmbilight()
-
-   
     return request_ok({
         'result': chosen_action
     })
