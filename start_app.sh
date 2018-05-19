@@ -10,5 +10,5 @@ cd ~/rpi_ws281x/python && sudo PYTHONPATH=".:build/lib.linux-armv7l-2.7" python 
 # cd ~
 # python ~/Ambilight/ambilight_server.py
 #
-echo '|--> Script Complete.               |-->'
+echo $(tput setaf 172)'|--> Script Complete.               |-->'
 echo '|--> It was a pleasure Serving you .|-->'
