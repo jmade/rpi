@@ -78,7 +78,10 @@ def makeIndexOptions():
 def index():
     return pages.index(makeIndexOptions())
 
+# IR
 
+def test_ir():
+    press_button_1()
 
 
 # App Responses
@@ -103,7 +106,7 @@ def new_options():
 
     return [
 
-        make_option_entry(title='Watch Apple TV w/Ambilgiht',catagory=catE,description=''),
+        make_option_entry(title='Watch Apple TV w/Ambilight',catagory=catE,description=''),
 
         make_option_entry(title='Start Ambilight',catagory=catA,description='This action will start the Ambilight System to display the given input.'),
         make_option_entry(title='Stop Ambilight',catagory=catA,description=''),
@@ -127,6 +130,8 @@ def new_options():
         make_option_entry(title='Volume Down (3)',catagory=catB,description='Lower (-) the System Volume by 30 percent.'),
         make_option_entry(title='Volume Down Max',catagory=catB,description='Lower (-) the System Volume to 0.'),
 
+        make_option_entry(title='IR',catagory=catE,description='Perform IR Command'),
+        
     ]
 
 def availible_options():
@@ -148,6 +153,7 @@ def availible_options():
         'Volume Up (3)',
         'Volume Down (3)',
         'Volume Down Max',
+        'IR',
     ]
 
 
@@ -254,6 +260,7 @@ def availibleActions():
         'Volume Up (3)' : volumeUpTriple,
         'Volume Down (3)' : volumeDownTriple,
         'Volume Down Max' : volumeDownMax,
+        'IR' : test_ir,
     }
 
 @app.route('/chosen_action',  methods=['GET', 'POST'])
