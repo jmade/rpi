@@ -10,7 +10,8 @@ from server_lib import pages
 from lib.python.led import *
 from lib.python.ambilight import start_ambilight_system, stop_ambilight_system
 from lib.python.AmbilightObject import *
-from lib.python.ambi_ir import *
+from lib.python.ambi_ir import hdmi_switch
+from lib.python.atv import atv_remote
 from lib.python.S300 import power, volume_up, volume_down
 from lib.python.cec import hdmi_1, hdmi_2, hdmi_3, tv_power_on, tv_power_off
 from lib.python.vol import volumeUp, volumeDown, volumeUpTriple, volumeDownTriple, volumeDownMax
@@ -79,9 +80,64 @@ def index():
     return pages.index(makeIndexOptions())
 
 # IR
-
 def test_ir():
     press_button_1()
+
+def switch_to_apple_tv():
+    hdmi_switch(2)
+
+def switch_to_nintendo_switch():
+    hdmi_switch(2)
+
+def switch_to_ps4():
+    hdmi_switch(4)
+
+def switch_to_input4():
+    hdmi_switch(4)
+
+
+# AppleTV
+# - down - Press key down
+#  - left - Press key left
+#  - menu - Press key menu
+#  - next - Press key next
+#  - pause - Press key play
+#  - play - Press key play
+#  - previous - Press key previous
+#  - right - Press key right
+#  - select - Press key select
+#  - set_position - Seek in the current playing media
+#  - set_repeat - Change repeat mode
+#  - set_shuffle - Change shuffle mode to on or off
+#  - stop - Press key stop
+#  - top_menu - Go to main menu (long press menu)
+#  - up - Press key up
+
+def atv_up():
+    atv_remote('up')
+
+def atv_down():
+    atv_remote('down')
+
+def atv_left():
+    atv_remote('left')
+
+def atv_right():
+    atv_remote('right')
+
+def atv_select():
+    atv_remote('select')
+
+def atv_menu():
+    atv_remote('menu')
+
+def atv_pause():
+    atv_remote('pause')
+
+def atv_top_menu():
+    atv_remote('top_menu')
+
+
 
 
 # App Responses
@@ -99,10 +155,12 @@ def make_option_entry(title,catagory='ambilight',description='None.'):
 
 def new_options():
     catA = 'ambilight'
-    catB = 'tv'
+    catB = 'tv' # HDMI CEC
     catC = 'test'
     catD = 'lights'
     catE = 'automation'
+    catF = 'hdmi_input' # IR
+    catG = 'atv'
 
     return [
 
@@ -112,6 +170,9 @@ def new_options():
         make_option_entry(title='Stop Ambilight',catagory=catA,description=''),
 
         make_option_entry(title='Wheel',catagory=catD,description='Animate the Color-Wheel on lights.'),
+        make_option_entry(title='Start Wheel',catagory=catD,description='Animate the Color-Wheel on lights.'),
+        make_option_entry(title='Stop Wheel',catagory=catD,description='Animate the Color-Wheel on lights.'),
+
         make_option_entry(title='Change Color',catagory=catD,description='Change Lights to Green.'),
         make_option_entry(title='Blackout',catagory=catD,description='Turn lights to Black color.'),
 
@@ -129,9 +190,20 @@ def new_options():
         make_option_entry(title='Volume Up (3)',catagory=catB,description='Raise (+) the System Volume by 30 percent.'),
         make_option_entry(title='Volume Down (3)',catagory=catB,description='Lower (-) the System Volume by 30 percent.'),
         make_option_entry(title='Volume Down Max',catagory=catB,description='Lower (-) the System Volume to 0.'),
-
-        make_option_entry(title='IR',catagory=catE,description='Perform IR Command'),
         
+        make_option_entry(title='Apple TV',catagory=catF,description='HDMI Switch to Input 1'),
+        # make_option_entry(title='Nintendo Switch',catagory=catF,description='HDMI Switch to Input 2'),
+        make_option_entry(title='PS4',catagory=catF,description='HDMI Switch to Input 3'),
+        # make_option_entry(title='Input 4',catagory=catF,description='HDMI Switch to Input 4'),
+        make_option_entry(title='Up',catagory=catG,description='HDMI Switch to Input 3'),
+        make_option_entry(title='Down',catagory=catG,description='HDMI Switch to Input 3'),
+        make_option_entry(title='Left',catagory=catG,description='HDMI Switch to Input 3'),
+        make_option_entry(title='Right',catagory=catG,description='HDMI Switch to Input 3'),
+        make_option_entry(title='Select',catagory=catG,description='HDMI Switch to Input 3'),
+        make_option_entry(title='Menu',catagory=catG,description='HDMI Switch to Input 3'),
+        make_option_entry(title='Pause',catagory=catG,description='HDMI Switch to Input 3'),
+        make_option_entry(title='Top Menu',catagory=catG,description='HDMI Switch to Input 3'),
+
     ]
 
 def availible_options():
@@ -153,7 +225,8 @@ def availible_options():
         'Volume Up (3)',
         'Volume Down (3)',
         'Volume Down Max',
-        'IR',
+        'Apple TV',
+        'PS4',
     ]
 
 
@@ -245,7 +318,8 @@ def availibleActions():
     return {
         'Start Ambilight' : startBackgroundAmbilight,
         'Stop Ambilight' : stopBackgroundAmbilight,
-        'Wheel' : performWheel, 
+        'Wheel' : performWheel,
+        
         'Change Color' : changeColor,
         'Test' : emptyOption,
         'Blackout' : blackoutStrip,
@@ -260,7 +334,20 @@ def availibleActions():
         'Volume Up (3)' : volumeUpTriple,
         'Volume Down (3)' : volumeDownTriple,
         'Volume Down Max' : volumeDownMax,
-        'IR' : test_ir,
+        # IR
+        'Apple TV' : switch_to_apple_tv,
+        'Nintendo Switch' : switch_to_nintendo_switch,
+        'PS4' : switch_to_ps4,
+        'Input 4' : switch_to_input4,
+
+        'Up' : atv_up,
+        'Down' : atv_down,
+        'Left' : atv_left,
+        'Right' : atv_right,
+        'Select' : atv_select,
+        'Menu' : atv_menu,
+        'Pause' : atv_pause,
+        'Top Menu' : atv_top_menu,
     }
 
 @app.route('/chosen_action',  methods=['GET', 'POST'])

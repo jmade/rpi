@@ -1,7 +1,13 @@
 import subprocess
+from time import sleep
 
 BASE_DIR = '/home/pi/Ambilight/lib/shell/ir/hdmi_switcher.sh'
 
+def runHDMISwitch(button_name):
+	subprocess.Popen(['bash', BASE_DIR, button_name])
+
+
+# Commands
 def press_button_1():
 	runHDMISwitch('button_1')
 
@@ -23,5 +29,8 @@ def press_button_pip():
 def press_button_enter():
 	runHDMISwitch('button_enter')
 
-def runHDMISwitch(button_name):
-	subprocess.Popen(['bash', BASE_DIR, button_name])
+# New Input
+def hdmi_switch(input):
+	runHDMISwitch('b_'+str(input)+'_i_1')
+	sleep(1.0)
+	runHDMISwitch('b_'+str(input)+'_i_2')
