@@ -11,8 +11,6 @@ _bold=$(tput bold)
 _underline=$(tput sgr 0 1)
 
 
-
-
 function _success()
 {
     printf "${_green}✔ %s${_reset}\n" "$@"
@@ -131,11 +129,30 @@ function install_rabbitmq()
 }
 
 
+# MariaDB
+function install_mariaDB()
+{
+	_bolded "Installing MariaDB"
+	sudo apt-get update -y
+	sudo apt-get install mariadb-server -y
+	_success "MariaDB Installation Successful!"
+
+}
+
+# pymysql
+function install_pymysql()
+{
+	_bolded "Installing pymysql"
+	pip install pymysql
+	_success "pymysql Installation Successful!"
+}
+
+
 
 function _main()
 {
 	_bold "-~- Starting Setup Script -~-"
-	install_rabbitmq
+	install_mariaDB
 	_success "-~- Finished Install Script -~-"
 }
 

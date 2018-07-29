@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import subprocess as sp
 import numpy as np
 from PIL import Image
@@ -57,16 +55,6 @@ def pixelateImage(image,image_name='pixelate'):
 
 def saveImage(img,name='default_image'):
 	Image.fromarray(img.astype('uint8')).save(name + '.jpeg')
-
-
-# def colorizeTopRow(top_row,strip):
-# 	pixel_index = 0
-# 	for i in range(34,68):
-# 		pixel = top_row[0][i]
-# 		color = Color(pixel[0],pixel[1],pixel[2])
-# 		strip.setPixelColor(pixel_index,color)
-# 		pixel_index += 1
-# 	strip.show()
 
 
 #  Auto Crop / Cropping 

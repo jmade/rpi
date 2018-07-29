@@ -1,30 +1,45 @@
-#!/usr/bin/env python2.7
-
 from flask import Flask, jsonify, request, redirect, url_for
-import subprocess
-import psutil
 from time import sleep
-import multiprocessing as mp
-from multiprocessing import Process, Value
+
 from server_lib import pages
-from lib.python.led import *
-from lib.python.ambilight import start_ambilight_system, stop_ambilight_system
-from lib.python.AmbilightObject import *
+
 from lib.python.ambi_ir import hdmi_switch
 from lib.python.atv import atv_remote
-from lib.python.S300 import power, volume_up, volume_down
 from lib.python.cec import hdmi_1, hdmi_2, hdmi_3, tv_power_on, tv_power_off
 from lib.python.vol import volumeUp, volumeDown, volumeUpTriple, volumeDownTriple, volumeDownMax
+from lib.python.ambi_background import start_loop, kill_loop, start_ambi, kill_ambilight, light_status, light_reading, start_blackout
 
-STRIP = None
-POOL = None
-PROCESS = None
-LOOP_PID = 0
-AMBI_PID = 0
-AMBILIGHT_RUNNING = False
+from enum import Enum
+
+class classproperty(object):
+    def __init__(self, getter):
+        self.getter= getter
+    def __get__(self, instance, owner):
+        return self.getter(owner)
+
+class AppType(Enum):
+    CEC = 'CEC'
+    NEOPIXEL = 'Neopixel'
+    VOLUME = 'Volume'
+    ATV = 'ATV'
+    IR = 'IR'
+    TEST = 'TEST'
+    EXP = 'EXPERIMENTAL'
+
+    @classproperty
+    def __values__(cls):
+        return [m.value for m in cls]
+
+# Color Helpers
+RESET="\x1b[0;0m"
+GREEN="\x1b[1;32m"
+BOLD="\x1b[1m"
+BLUE="\x1b[34m"
+YELLOW="\x1b[93m"
 
 app = Flask(__name__, static_folder='script')
 app.config['SECRET_KEY'] = 'top-secret!'
+
 
 # Response Dict
 def request_ok(response_dict, success=True):
@@ -45,7 +60,6 @@ def action():
         return request_ok({'message':'okay'})
     elif action_value == 'Color':
         color_string = request.form['color']
-        # handle_html_color(color_string)
         return redirect(url_for('success_action',value=action_value))
     else:
         return redirect(url_for('success_action',value=action_value))
@@ -79,12 +93,14 @@ def makeIndexOptions():
 def index():
     return pages.index(makeIndexOptions())
 
+
+
 # IR
 def test_ir():
     press_button_1()
 
 def switch_to_apple_tv():
-    hdmi_switch(2)
+    hdmi_switch(1)
 
 def switch_to_nintendo_switch():
     hdmi_switch(2)
@@ -97,21 +113,6 @@ def switch_to_input4():
 
 
 # AppleTV
-# - down - Press key down
-#  - left - Press key left
-#  - menu - Press key menu
-#  - next - Press key next
-#  - pause - Press key play
-#  - play - Press key play
-#  - previous - Press key previous
-#  - right - Press key right
-#  - select - Press key select
-#  - set_position - Seek in the current playing media
-#  - set_repeat - Change repeat mode
-#  - set_shuffle - Change shuffle mode to on or off
-#  - stop - Press key stop
-#  - top_menu - Go to main menu (long press menu)
-#  - up - Press key up
 
 def atv_up():
     atv_remote('up')
@@ -138,167 +139,45 @@ def atv_top_menu():
     atv_remote('top_menu')
 
 
-
-
 # App Responses
 
-# options response
-def make_option_entry(title,catagory='ambilight',description='None.'):
-    option = {
+# Options response
+def make_option_entry(title:str,cat:str,description='None'):
+    return {
         'title' : title,
-        'catagory' : catagory,
+        'catagory' : cat,
         'description' : description,
-        'option_id' : len(title)+23284,
     }
 
-    return option
-
-def new_options():
-    catA = 'ambilight'
-    catB = 'tv' # HDMI CEC
-    catC = 'test'
-    catD = 'lights'
-    catE = 'automation'
-    catF = 'hdmi_input' # IR
-    catG = 'atv'
-
+def option_entries():
     return [
+        # make_option_entry(title='Watch Apple TV w/Ambilight',catagory=catE,description=''),
+        make_option_entry(title='Ambilight ON',cat=AppType.NEOPIXEL.value,description='This action will start the Ambilight System to display the given input.'),
+        make_option_entry(title='Ambilight OFF',cat=AppType.NEOPIXEL.value),
+        make_option_entry(title='Neopixel Loop ON',cat=AppType.NEOPIXEL.value,description='Start a Demo Loop of the Neopixels on a Background Process.'),
+        make_option_entry(title='Neopixel Loop OFF',cat=AppType.NEOPIXEL.value,description='Stop a Backgrounded Demo Loop of Neopixels.'),
 
-        make_option_entry(title='Watch Apple TV w/Ambilight',catagory=catE,description=''),
+        make_option_entry(title='Test',cat=AppType.TEST.value,description='Endpoint Test.'),
 
-        make_option_entry(title='Start Ambilight',catagory=catA,description='This action will start the Ambilight System to display the given input.'),
-        make_option_entry(title='Stop Ambilight',catagory=catA,description=''),
+        make_option_entry(title='HDMI Input 2',cat=AppType.CEC.value,description='HDMI Input 2.'),
+        make_option_entry(title='HDMI Input 3',cat=AppType.CEC.value,description='HDMI Input 3.'),
 
-        make_option_entry(title='Wheel',catagory=catD,description='Animate the Color-Wheel on lights.'),
-        make_option_entry(title='Start Wheel',catagory=catD,description='Animate the Color-Wheel on lights.'),
-        make_option_entry(title='Stop Wheel',catagory=catD,description='Animate the Color-Wheel on lights.'),
-
-        make_option_entry(title='Change Color',catagory=catD,description='Change Lights to Green.'),
-        make_option_entry(title='Blackout',catagory=catD,description='Turn lights to Black color.'),
-
-        make_option_entry(title='Test',catagory=catC,description='Endpoint Test.'),
-        make_option_entry(title='Solenoid Test',catagory=catC,description='Solenoid Test.'),
-
-        make_option_entry(title='TV Off',catagory=catB,description='TV Power OFF.'),
-        make_option_entry(title='TV On',catagory=catB,description='TV Power ON.'),
-        make_option_entry(title='HDMI Input 1',catagory=catB,description='HDMI Input 1.'),
-        make_option_entry(title='HDMI Input 2',catagory=catB,description='HDMI Input 2.'),
-        make_option_entry(title='HDMI Input 3',catagory=catB,description='HDMI Input 3.'),
-
-        make_option_entry(title='Volume Up',catagory=catB,description='Raise (+) the System Volume by 10 percent.'),
-        make_option_entry(title='Volume Down',catagory=catB,description='Lower (-) the System Volume by 10 percent.'),
-        make_option_entry(title='Volume Up (3)',catagory=catB,description='Raise (+) the System Volume by 30 percent.'),
-        make_option_entry(title='Volume Down (3)',catagory=catB,description='Lower (-) the System Volume by 30 percent.'),
-        make_option_entry(title='Volume Down Max',catagory=catB,description='Lower (-) the System Volume to 0.'),
-        
-        make_option_entry(title='Apple TV',catagory=catF,description='HDMI Switch to Input 1'),
-        # make_option_entry(title='Nintendo Switch',catagory=catF,description='HDMI Switch to Input 2'),
-        make_option_entry(title='PS4',catagory=catF,description='HDMI Switch to Input 3'),
-        # make_option_entry(title='Input 4',catagory=catF,description='HDMI Switch to Input 4'),
-        make_option_entry(title='Up',catagory=catG,description='HDMI Switch to Input 3'),
-        make_option_entry(title='Down',catagory=catG,description='HDMI Switch to Input 3'),
-        make_option_entry(title='Left',catagory=catG,description='HDMI Switch to Input 3'),
-        make_option_entry(title='Right',catagory=catG,description='HDMI Switch to Input 3'),
-        make_option_entry(title='Select',catagory=catG,description='HDMI Switch to Input 3'),
-        make_option_entry(title='Menu',catagory=catG,description='HDMI Switch to Input 3'),
-        make_option_entry(title='Pause',catagory=catG,description='HDMI Switch to Input 3'),
-        make_option_entry(title='Top Menu',catagory=catG,description='HDMI Switch to Input 3'),
-
+        make_option_entry(title='Select',cat=AppType.ATV.value,description='AppleTV Select via a Command being send on the server.'),
     ]
 
-def availible_options():
-    return [
-        'Start Ambilight',
-        'Stop Ambilight',
-        'Wheel',
-        'Change Color',
-        'Test',
-        'Blackout',
-        'Test Button',
-        'TV Off',
-        'TV On',
-        'HDMI Input 1',
-        'HDMI Input 2',
-        'HDMI Input 3',
-        'Volume Up',
-        'Volume Down',
-        'Volume Up (3)',
-        'Volume Down (3)',
-        'Volume Down Max',
-        'Apple TV',
-        'PS4',
-    ]
+def options_dict() -> dict:
+    return {
+        'app_types' : AppType.__values__,
+        'options' : option_entries(),
+        'light_reading' : light_reading(),
+    }
 
-
-def inquireAmbilightStatus():
-    global AMBILIGHT_RUNNING
-    if AMBILIGHT_RUNNING == True:
-        return 1
-    else :
-        return 0
 
 #  for the app 
 def createOptionsResponse():
-    response_dict = {}
-
-    options = {
-        'options' : availible_options(),
-        'amibilight_status' : inquireAmbilightStatus(),
-        'something' : 'Awesome.',
-        'new_options' : new_options(),
-    }
-
-    response_dict.update({
-        'options': options
+    return request_ok( {
+        'options' : options_dict(),
     })
-
-    return request_ok(response_dict)
-
-# ColorStrip Commands
-def changeColor():
-    global STRIP
-    if STRIP is None: STRIP = ambilightStripInit()
-    colorWipe(STRIP,Color(0,255,0))
-
-def blackoutStrip():
-    global STRIP
-    if STRIP is None: STRIP = ambilightStripInit()
-    colorWipe(STRIP,Color(0,0,0))
-
-def performWheel():
-    global STRIP
-    if STRIP is None: STRIP = ambilightStripInit()
-    # this will block currently...
-    rainbowCycle(STRIP, wait_ms=20, iterations=1)
-
-
-#  Amiblight Funcs
-def startBackgroundAmbilight():
-    global PROCESS
-    global STRIP
-    global AMBILIGHT_RUNNING
-    if AMBILIGHT_RUNNING == False:
-        print("AMBILIGHT NOT Running, Starting it up.")
-        STRIP = ambilightStripInit()
-        PROCESS = Process(target=startup_amilight_obj, args=())
-        PROCESS.start()
-        AMBILIGHT_RUNNING = True
-
-def stopBackgroundAmbilight():
-    global PROCESS
-    global AMBILIGHT_RUNNING
-    print('Quitting Background Ambilight Process.')
-    print(PROCESS)
-    PROCESS.terminate()
-    PROCESS.join()
-    blackoutStrip()
-    AMBILIGHT_RUNNING = False
-    return
-
-def startup_amilight_obj():
-    ambiObj = AmbilightObject()
-    ambiObj.describe()
-    ambiObj.startAmbilight()
 
 
 #################
@@ -312,23 +191,19 @@ def ping():
     })
 
 def emptyOption():
-    print("Nothing Chosen.")
+    print("Empty Option.")
 
 def availibleActions():
     return {
-        'Start Ambilight' : startBackgroundAmbilight,
-        'Stop Ambilight' : stopBackgroundAmbilight,
-        'Wheel' : performWheel,
-        
-        'Change Color' : changeColor,
+        # Test
         'Test' : emptyOption,
-        'Blackout' : blackoutStrip,
-        'Test Button' : power,
-        'TV Off' : tv_power_off,
-        'TV On' : tv_power_on,
-        'HDMI Input 1' : hdmi_1,
+        # HDMI CEC 
+        'TV Power Off' : tv_power_off,
+        'TV Power On' : tv_power_on,
+        'HDMI 1' : hdmi_1,
         'HDMI Input 2' : hdmi_2,
         'HDMI Input 3' : hdmi_3,
+        # Volume
         'Volume Up' : volumeUp,
         'Volume Down' : volumeDown,
         'Volume Up (3)' : volumeUpTriple,
@@ -339,7 +214,7 @@ def availibleActions():
         'Nintendo Switch' : switch_to_nintendo_switch,
         'PS4' : switch_to_ps4,
         'Input 4' : switch_to_input4,
-
+        # Apple TV commands
         'Up' : atv_up,
         'Down' : atv_down,
         'Left' : atv_left,
@@ -348,13 +223,19 @@ def availibleActions():
         'Menu' : atv_menu,
         'Pause' : atv_pause,
         'Top Menu' : atv_top_menu,
+        # 
+        'Neopixel Loop ON' : start_loop,
+        'Neopixel Loop OFF' : kill_loop,
+        'Ambilight ON' : start_ambi,
+        'Ambilight OFF' : kill_ambilight,
     }
 
 @app.route('/chosen_action',  methods=['GET', 'POST'])
 def chosen_action():
-
+    print(BOLD+BLUE+'Ambilight System: '+RESET+YELLOW+light_status()+RESET)
+   
     chosen_action = request.form['action']
-    print("Chosen Action: "+chosen_action)
+    print(BOLD+YELLOW+"Chosen Action: "+RESET+GREEN+chosen_action+RESET)
     availibleActions()[chosen_action]()
 
     return request_ok({
@@ -364,13 +245,13 @@ def chosen_action():
 
 @app.route('/ambi_app',  methods=['GET', 'POST'])
 def ambi_app():
+    print("Mobile App - "+BOLD+YELLOW+"Options"+RESET)
     sleep(1.0)
     return createOptionsResponse()
 
 
 @app.route('/test', methods=['GET', 'POST'])
 def test():
-    print('Test')
     return request_ok({ 'message': 'Welcome to Amiblight\'s moblie API.'})
 
 
